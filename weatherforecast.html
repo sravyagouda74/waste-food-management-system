@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Forecast App</title>
+    <style>
+        h1 {
+            background: rgb(206, 188, 89);
+            border-radius: 50px;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #bbd8e3;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #dae9c6;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        input[type="text"] {
+            padding: 10px;
+            margin: 10px 0;
+            width: 80%;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #69f088;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #58d07c;
+        }
+        #currentWeather {
+            margin: 20px 0;
+        }
+        #dateTime {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <p><img src="https://tse2.mm.bing.net/th?id=OIP.9YtAsanlFMBU3PoImltJpwHaFP&pid=Api&P=0&h=180" width="40px"></p>
+        <h1>Weather Forecast</h1>
+        <div id="dateTime"></div>
+        <input type="text" id="cityInput" placeholder="Enter city name" />
+        <button id="getWeatherBtn">Get Weather</button>
+        
+        <div id="currentWeather"></div>
+        
+        <canvas id="weatherChart"></canvas>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const apiKey = '218fd4e2b7b9961fb1fa257cdecd1daf';  
+        const currentWeatherDiv = document.getElementById('currentWeather');
+        const cityInput = document.getElementById('cityInput');
+        const getWeatherBtn = document.getElementById('getWeatherBtn');
+        const ctx = document.getElementById('weatherChart').getContext('2d');
+        let weatherChart;
+
+        async function getWeatherData(city) {
+            const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city},IN&appid=${apiKey}&units=metric`);
+            return await response.json();
+        }
+
+        async function getForecastData(lat, lon) {
+            const response = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`);
+            return await response.json();
+        }
+
+        function updateDateTime() {
+            const now = new Date();
+            document.getElementById('dateTime').innerText = `Date & Time: ${now.toLocaleString()}`;
+        }
+
+        async function displayWeather(city) {
+            const currentWeather = await getWeatherData(city);
+            
+            if (currentWeather.cod !== 200) {
+                currentWeatherDiv.innerHTML = 'City not found!';
+                return;
+            }
+            
+            const { coord: { lat, lon }, main, weather, wind } = currentWeather;
+            currentWeatherDiv.innerHTML = `
+                <h2>${city}</h2>
+                <p>Temperature: ${main.temp}°C</p>
+                <p>Humidity: ${main.humidity}%</p>
+                <p>Wind Speed: ${wind.speed} m/s</p>
+                <p>Condition: ${weather[0].description}</p>
+            `;
+
+            const forecastData = await getForecastData(lat, lon);
+            const labels = forecastData.list.map(item => new Date(item.dt * 1000).toLocaleString());
+            const temperatures = forecastData.list.map(item => item.main.temp);
+            const humidity = forecastData.list.map(item => item.main.humidity);
+
+            if (weatherChart) {
+                weatherChart.destroy();
+            }
+            weatherChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Temperature (°C)',
+                            data: temperatures,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            fill: false,
+                        },
+                        {
+                            label: 'Humidity (%)',
+                            data: humidity,
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            fill: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        getWeatherBtn.addEventListener('click', () => {
+            const city = cityInput.value.trim() || 'Delhi'; // Default to Delhi if input is empty
+            displayWeather(city);
+        });
+
+        window.onload = () => {
+            cityInput.value = 'Delhi'; // Set input to 'Delhi' on load
+            displayWeather('Delhi'); // Load weather for Delhi
+        };
+
+        updateDateTime(); // Initial date and time display
+        setInterval(updateDateTime, 1000); // Update date and time every second
+    </script>
+</body>
+</html>
